@@ -1,0 +1,38 @@
+{% extends 'base_eventos.html' %}
+
+{% block 'conteudo' %}
+<br>
+<br>
+<div class="container">
+    <div class="row">
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert {{message.tags}}"> {{message}}
+        </div>
+        {% endfor %}
+        {% endif %}
+        <div class="col-md-3">
+
+            <img width="100%" src="{{evento.logo.url}}">
+            <br>
+            <br>
+            <h3 style="color: white;">{{evento.nome}}</h3>
+        </div>
+        <hr style="color: white;">
+
+        <div class="col-md-6">
+            <h5 style="color: white;">{{evento.descricao}}</h5>
+            <br>
+            <p style="color: white;">{{evento.data_inicio}} a {{evento.data_termino}}</p>
+
+        </div>
+        <form action="{% url 'inscrever_evento' evento.id %}" method="POST">{% csrf_token %}
+            {% if request.user in evento.participantes.all %}
+            <input type="submit" value="Você já está inscrito" disabled class="btn btn-danger btn-lg">
+            {% else %}
+            <input type="submit" value="Quero Participar" class="btn btn-danger btn-lg">
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endblock %}

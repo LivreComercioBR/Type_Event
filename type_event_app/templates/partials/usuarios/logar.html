@@ -1,0 +1,20 @@
+<div class="box-form">
+    <h3>LOGIN</h3>
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    <hr style="border-color: #7E7B7C">
+
+    <form action="{% url 'logar' %}" method="POST">{% csrf_token %}
+        <label class="mb-2">Username:</label>
+        <input type="text" class="form-control" placeholder="Username..." name="username">
+        <br>
+        <label class="mb-2">Senha</label>
+        <input type="password" class="form-control mb-2" placeholder="Senha..." name="senha">
+        <input type="submit" value="LOGAR" class="btn btn-outline-danger btn-lg mt-2">
+        <a href="{% url 'cadastro' %}" class="btn btn-outline-success btn-lg mt-2">Cadastre-se</a>
+        <br>
+    </form>
+</div>
