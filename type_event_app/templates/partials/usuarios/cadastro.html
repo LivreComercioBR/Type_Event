@@ -6,8 +6,8 @@
     </div>
     {% endfor %}
     {% endif %}
-    <br>
-    <h3 class="text-center">CADASTRO</h3>
+
+    <h3 class="text-center mt-0">CADASTRO</h3>
     <hr style="border-color: #7E7B7C">
 
     <form action="{% url 'cadastro' %}" method="POST">{% csrf_token %}
@@ -28,9 +28,8 @@
                 <input type="password" class="form-control" placeholder="Confirmar senha..." name="confirmar_senha">
             </div>
         </div>
-        <a href="{% url 'logar' %}" class="link">Já possuo uma conta</a>
-        <br>
-        <br>
-        <input type="submit" value="CADASTRAR" class="btn-principal">
+        <input type="submit" value="CADASTRAR" class="btn btn-outline-danger mt-3">
+        <a class="btn btn-outline-success mt-3" href="{% url 'logar' %}">Já sou cadastrado</a>
     </form>
+
 </div>

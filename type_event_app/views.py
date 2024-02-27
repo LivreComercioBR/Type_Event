@@ -1,8 +1,10 @@
 from django.shortcuts import render, HttpResponse, redirect
+from django.urls import reverse
 from . utils import validar_dados, password_is_valid
 from django.contrib import messages, auth
 from django.contrib.messages import constants
 from .models import User
+from eventos.models import Certificado
 
 
 def cadastro(request):
@@ -64,3 +66,13 @@ def logar(request):
 def sair(request):
     auth.logout(request)
     return redirect('/usuarios/logar')
+
+
+def meus_certificados(request):
+    certificados = Certificado.objects.filter(
+        participante=request.user)
+    if not certificados:
+        messages.add_message(request, constants.WARNING,
+                             'Você não tem nenhum certificado para ser mostrado')
+
+    return render(request, 'meus_certificados.html', {'certificados': certificados})

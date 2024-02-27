@@ -1,13 +1,20 @@
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.messages import constants
+import csv
+from secrets import token_urlsafe
+from eventos.models import Certificado, Evento
+from type_event_pro import settings
+import os
+from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
+from django.core.files.uploadedfile import InMemoryUploadedFile
+import sys
 
-from eventos.models import Evento
 
-
-# Create your views here.
 @login_required
 def novo_evento(request):
     if request.method == "GET":
@@ -65,3 +72,120 @@ def inscrever_evento(request, id):
         messages.add_message(request, constants.SUCCESS,
                              'Inscrição realizada com sucesso!')
         return redirect(f'/eventos/inscrever_evento/{evento.id}/')
+
+
+@login_required
+def participantes_evento(request, id):
+    evento = get_object_or_404(Evento, id=id)
+    if not evento.criador == request.user:
+        raise Http404('Desculpa! Este evento não é seu')
+    if request.method == "GET":
+        participantes = evento.participantes.all()[::3]
+        return render(request, 'participantes_evento.html', {'evento': evento, 'participantes': participantes})
+
+
+@login_required
+def gerar_csv(request, id):
+    evento = get_object_or_404(Evento, id=id)
+    if not evento.criador == request.user:
+        raise Http404('Desculpa! Este evento não é seu')
+    participantes = evento.participantes.all()
+    token = f'{token_urlsafe(8)}.csv'
+    path = os.path.join(settings.MEDIA_ROOT, token)
+
+    with open(path, 'w') as arq:
+        writer = csv.writer(arq, delimiter=',')
+        for participante in participantes:
+            x = {participante.username, participante.email}
+            writer.writerow(x)
+    return redirect(f'/media/{token}')
+
+
+def certificados_evento(request, id):
+    evento = get_object_or_404(Evento, id=id)
+    if not evento.criador == request.user:
+        raise Http404('Esse evento não é seu')
+    if request.method == "GET":
+        qtd_certificados = evento.participantes.all().count(
+        ) - Certificado.objects.filter(evento=evento).count()
+        return render(request, 'certificados_evento.html', {'evento': evento, 'qtd_certificados': qtd_certificados})
+
+
+def gerar_certificado(request, id):
+    evento = get_object_or_404(Evento, id=id)
+    if not evento.criador == request.user:
+        raise Http404('Este evento não é seu')
+
+    # Armazenei o rascunho do certificado dentro da pasta img dentro de static/evento
+
+    path_certificado = os.path.join(
+        settings.BASE_DIR, 'templates/static/eventos/img/certificado.png')
+
+    # Criei uma pasta fonte dentro de templates/static/fonts para usar no certificado
+
+    path_fonte = os.path.join(
+        settings.BASE_DIR, 'templates/static/fontes/arimo.ttf')
+
+    # importei a biblioteca Pillow com os atributos
+    # Image, Imagedraw e ImageFont
+
+    for participante in evento.participantes.all():
+
+        # aqui eu abri o rascunho do certificado
+        img = Image.open(path_certificado)
+
+        # path_certificado = os.path.join(
+        #     settings.BASE_DIR, 'templates/static/eventos/img/certificado.png')
+
+        draw = ImageDraw.Draw(img)
+        # aqui eu fiz um rascunho do projeto
+
+        font_nome = ImageFont.truetype(path_fonte, 70)
+        # Aqui estou pegando o caminho da fonte e definindo o tamanho como 70.
+        font_info = ImageFont.truetype(path_fonte, 30)
+
+        draw.text((230, 651), f'{participante.username}',
+                  font=font_nome, fill=(0, 0, 0))
+        draw.text((751, 782), f'{evento.nome}',
+                  font=font_info, fill=(0, 0, 0))
+        draw.text((806, 849), f'{evento.carga_horaria}',
+                  font=font_info, fill=(0, 0, 0))
+
+        output = BytesIO()
+        img.save(output, format='PNG', quality=100)
+        output.seek(0)
+
+        img_final = InMemoryUploadedFile(
+            output,
+            'ImageField',
+            f'{token_urlsafe(8)}.png',
+            'image/jpeg',
+            sys.getsizeof(output),
+            None)
+
+        certificado_gerado = Certificado(
+            certificado=img_final,
+            # participante do for participante in evento.participantes.all()
+            participante=participante,
+            evento=evento  # evento do objeto evento
+        )
+        certificado_gerado.save()
+
+    messages.add_message(request, constants.SUCCESS,
+                         'Certificados gerados com sucesso!')
+    return redirect(reverse('certificados_evento', kwargs={'id': evento.id}))
+
+
+def procurar_certificado(request, id):
+    evento = get_object_or_404(Evento, id=id)
+    if not evento.criador == request.user:
+        raise Http404('Esse evento não é seu')
+    email = request.POST.get('email')
+    certificado = Certificado.objects.filter(
+        evento=evento).filter(participante__email=email).first()
+    if not certificado:
+        messages.add_message(request, constants.WARNING,
+                             'Certificado não encontrado')
+        return redirect(reverse('certificados_evento', kwargs={'id': evento.id}))
+
+    return redirect(certificado.certificado.url)
